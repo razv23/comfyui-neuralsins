@@ -35,8 +35,17 @@ openai_models = [
     "gpt-5-nano",  # Fastest, most cost-efficient version of GPT-5
 ]
 
+# xAI Grok models (as of 2025)
+grok_models = [
+    "grok-4",  # Latest reasoning model with advanced capabilities
+    "grok-4-1-fast-reasoning",  # Fast reasoning version of Grok 4
+    "grok-code",  # Specialized model for code generation and analysis
+    "grok-3",  # Previous generation model
+    "grok-3-mini",  # Smaller, faster version of Grok 3
+]
+
 # All available models
-all_models = claude_models + gemini_models + openai_models
+all_models = claude_models + gemini_models + openai_models + grok_models
 
 
 # Utility functions
@@ -252,6 +261,110 @@ def call_gemini_api(
     raise Exception("No valid response received from Gemini API")
 
 
+def call_grok_api(
+    api_key: str,
+    model: str,
+    prompt: str,
+    system_prompt: str,
+    image: Optional[Tensor],
+    max_tokens: int,
+    temperature: float,
+    seed: int = -1,
+    timeout: int = 500,
+):
+    """Single function to call xAI Grok API with text and optional image
+    
+    Uses the xAI Responses API format (OpenAI-compatible).
+    Grok models support seed parameter for reproducible outputs when seed != -1.
+    """
+    
+    # Build message content
+    content = []
+    
+    # Add image if provided
+    if image is not None:
+        if len(image.shape) == 4:  # Batch of images - just use first one
+            pil_image = tensor2pil(image[0])
+        else:
+            pil_image = tensor2pil(image)
+        
+        image_base64 = pil2base64(pil_image)
+        content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{image_base64}",
+                "detail": "high"
+            }
+        })
+    
+    # Add text
+    content.append({"type": "text", "text": prompt})
+    
+    # Build messages array
+    messages = []
+    
+    # Add system message if provided
+    if system_prompt and system_prompt.strip():
+        messages.append({"role": "system", "content": system_prompt})
+    
+    # Add user message
+    messages.append({"role": "user", "content": content})
+    
+    # Build request using Responses API format
+    url = "https://api.x.ai/v1/responses"
+    data = {
+        "input": messages,
+        "model": model,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    
+    # Add seed if specified (not -1)
+    if seed != -1:
+        data["seed"] = seed
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    # Make request
+    response = requests.post(url, json=data, headers=headers, timeout=timeout)
+    
+    # Handle errors
+    if response.status_code != 200:
+        error_msg = f"Grok API request failed with status {response.status_code}"
+        try:
+            error_data = response.json()
+            if error_data.get("error"):
+                error_msg = error_data["error"].get("message", error_msg)
+        except:
+            error_msg = f"{error_msg}: {response.text}"
+        raise Exception(error_msg)
+    
+    response_data = response.json()
+    
+    if response_data.get("error"):
+        raise Exception(response_data.get("error").get("message", "Unknown error"))
+    
+    # Extract text response from Responses API format
+    if "output" in response_data:
+        output = response_data["output"]
+        if isinstance(output, list) and len(output) > 0:
+            # Get the last message in the output
+            last_message = output[-1]
+            if "content" in last_message:
+                content = last_message["content"]
+                if isinstance(content, str):
+                    return content
+                elif isinstance(content, list):
+                    # Extract text from content array
+                    text_parts = [item["text"] for item in content if item.get("type") == "text"]
+                    return "".join(text_parts)
+    
+    raise Exception("No valid response received from Grok API")
+
+
 # ComfyUI Node Class
 class NSLLMChat:
     @classmethod
@@ -273,7 +386,7 @@ class NSLLMChat:
                         "min": -1,
                         "max": 0xFFFFFFFFFFFFFFFF,
                         "control_after_generate": False,
-                        "tooltip": "Random seed for reproducible results. -1 for random seed. Note: Only works with Gemini models, Claude doesn't support seeds.",
+                        "tooltip": "Random seed for reproducible results. -1 for random seed. Note: Works with Gemini and Grok models. Claude doesn't support seeds.",
                     },
                 ),
                 "timeout": (
@@ -315,6 +428,10 @@ class NSLLMChat:
                 api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get(
                     "GOOGLE_API_KEY"
                 )
+            elif model in grok_models:
+                api_key = os.environ.get("XAI_API_KEY") or os.environ.get(
+                    "GROK_API_KEY"
+                )
             else:
                 api_key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get(
                     "CLAUDE_API_KEY"
@@ -325,6 +442,10 @@ class NSLLMChat:
                 raise Exception(
                     "Gemini API key is required. Provide it in the node or set GEMINI_API_KEY environment variable."
                 )
+            elif model in grok_models:
+                raise Exception(
+                    "xAI API key is required. Provide it in the node or set XAI_API_KEY environment variable."
+                )
             else:
                 raise Exception(
                     "Claude API key is required. Provide it in the node or set ANTHROPIC_API_KEY environment variable."
@@ -333,6 +454,18 @@ class NSLLMChat:
         # Route to appropriate API based on model
         if model in gemini_models:
             response = call_gemini_api(
+                api_key=api_key.strip(),
+                model=model,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                image=image,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                seed=seed,
+                timeout=timeout,
+            )
+        elif model in grok_models:
+            response = call_grok_api(
                 api_key=api_key.strip(),
                 model=model,
                 prompt=prompt,
