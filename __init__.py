@@ -58,6 +58,9 @@ from py.wavespeed_wan25_image_edit import NODE_CLASS_MAPPINGS as wan25_edit_mapp
 from py.llm_chat import NODE_CLASS_MAPPINGS as llm_chat_mappings, NODE_DISPLAY_NAME_MAPPINGS as llm_chat_display
 from py.prompt_list_node import NODE_CLASS_MAPPINGS as prompt_list_mappings, NODE_DISPLAY_NAME_MAPPINGS as prompt_list_display
 from py.qwen_resolution_node import NODE_CLASS_MAPPINGS as qwen_resolution_mappings, NODE_DISPLAY_NAME_MAPPINGS as qwen_resolution_display
+from py.grok_client import NODE_CLASS_MAPPINGS as grok_client_mappings, NODE_DISPLAY_NAME_MAPPINGS as grok_client_display
+from py.grok_imagine_image import NODE_CLASS_MAPPINGS as grok_image_mappings, NODE_DISPLAY_NAME_MAPPINGS as grok_image_display
+from py.grok_imagine_video import NODE_CLASS_MAPPINGS as grok_video_mappings, NODE_DISPLAY_NAME_MAPPINGS as grok_video_display
 
 # Merge all node mappings
 NODE_CLASS_MAPPINGS = {}
@@ -111,6 +114,9 @@ all_class_mappings = [
     llm_chat_mappings,
     prompt_list_mappings,
     qwen_resolution_mappings,
+    grok_client_mappings,
+    grok_image_mappings,
+    grok_video_mappings,
 ]
 
 all_display_mappings = [
@@ -161,6 +167,9 @@ all_display_mappings = [
     llm_chat_display,
     prompt_list_display,
     qwen_resolution_display,
+    grok_client_display,
+    grok_image_display,
+    grok_video_display,
 ]
 
 for mapping in all_class_mappings:
