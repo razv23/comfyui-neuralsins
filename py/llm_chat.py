@@ -37,13 +37,14 @@ openai_models = [
     "gpt-5-nano",  # Fastest, most cost-efficient version of GPT-5
 ]
 
-# xAI Grok models (as of 2025)
+# xAI Grok models (as of 2026)
 grok_models = [
-    "grok-4",  # Latest reasoning model with advanced capabilities
-    "grok-4-1-fast-reasoning",  # Fast reasoning version of Grok 4
-    "grok-code",  # Specialized model for code generation and analysis
-    "grok-3",  # Previous generation model
-    "grok-3-mini",  # Smaller, faster version of Grok 3
+    "grok-4",  # Flagship model with 256k context window, advanced reasoning
+    "grok-4-1-fast-reasoning",  # Fast reasoning variant with 2M context window
+    "grok-4-fast-reasoning",  # Cost-efficient reasoning model with 2M context
+    "grok-4-1-fast-non-reasoning",  # Fast non-reasoning variant with 2M context
+    "grok-4-fast-non-reasoning",  # Cost-efficient non-reasoning model with 2M context
+    "grok-code-fast-1",  # Lightning-fast model for agentic coding (256k context)
 ]
 
 # All available models
