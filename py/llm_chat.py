@@ -44,7 +44,6 @@ grok_models = [
     "grok-4-fast-reasoning",  # Cost-efficient reasoning model with 2M context
     "grok-4-1-fast-non-reasoning",  # Fast non-reasoning variant with 2M context
     "grok-4-fast-non-reasoning",  # Cost-efficient non-reasoning model with 2M context
-    "grok-code-fast-1",  # Lightning-fast model for agentic coding (256k context)
 ]
 
 # All available models
