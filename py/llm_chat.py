@@ -12,6 +12,7 @@ from torch import Tensor
 # Latest Claude models (as of 2025)
 # Note: All these models support "Extended thinking" capability for deep reasoning
 claude_models = [
+    "claude-opus-4-6",  # Latest premium model with enhanced intelligence and performance
     "claude-opus-4-5",  # Premium model combining maximum intelligence with practical performance
     "claude-sonnet-4-5",  # Our best model for real-world agents and coding
     "claude-haiku-4-5",  # Hybrid model, capable of near-instant responses and extended thinking
@@ -27,6 +28,7 @@ gemini_models = [
 # OpenAI GPT models (as of 2025)
 # GPT-5 Series only - Latest generation
 openai_models = [
+    "gpt-5.3-codex",  # Latest agentic coding model, 25% faster, helped build itself
     "gpt-5.2",  # The best model for coding and agentic tasks across industries
     "gpt-5.2-pro",  # Version of GPT-5.2 that produces smarter and more precise responses
     "gpt-5",  # Intelligent reasoning model for coding and agentic tasks
