@@ -276,7 +276,7 @@ def call_grok_api(
 ):
     """Single function to call xAI Grok API with text and optional image
     
-    Uses the xAI Responses API format (OpenAI-compatible).
+    Uses OpenAI-compatible chat completions endpoint.
     Grok models support seed parameter for reproducible outputs when seed != -1.
     """
     
@@ -295,7 +295,6 @@ def call_grok_api(
             "type": "image_url",
             "image_url": {
                 "url": f"data:image/png;base64,{image_base64}",
-                "detail": "high"
             }
         })
     
@@ -309,13 +308,16 @@ def call_grok_api(
     if system_prompt and system_prompt.strip():
         messages.append({"role": "system", "content": system_prompt})
     
-    # Add user message
-    messages.append({"role": "user", "content": content})
+    # Add user message - use simple string if no image, otherwise use content array
+    if image is not None:
+        messages.append({"role": "user", "content": content})
+    else:
+        messages.append({"role": "user", "content": prompt})
     
-    # Build request using Responses API format
-    url = "https://api.x.ai/v1/responses"
+    # Build request using OpenAI-compatible format
+    url = "https://api.x.ai/v1/chat/completions"
     data = {
-        "input": messages,
+        "messages": messages,
         "model": model,
         "max_tokens": max_tokens,
         "temperature": temperature,
@@ -349,20 +351,9 @@ def call_grok_api(
     if response_data.get("error"):
         raise Exception(response_data.get("error").get("message", "Unknown error"))
     
-    # Extract text response from Responses API format
-    if "output" in response_data:
-        output = response_data["output"]
-        if isinstance(output, list) and len(output) > 0:
-            # Get the last message in the output
-            last_message = output[-1]
-            if "content" in last_message:
-                content = last_message["content"]
-                if isinstance(content, str):
-                    return content
-                elif isinstance(content, list):
-                    # Extract text from content array
-                    text_parts = [item["text"] for item in content if item.get("type") == "text"]
-                    return "".join(text_parts)
+    # Extract text response from OpenAI-compatible format
+    if "choices" in response_data and len(response_data["choices"]) > 0:
+        return response_data["choices"][0]["message"]["content"]
     
     raise Exception("No valid response received from Grok API")
 
