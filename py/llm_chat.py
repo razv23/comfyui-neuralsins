@@ -9,12 +9,13 @@ import requests
 from PIL import Image
 from torch import Tensor
 
-# Latest Claude models (as of 2025)
+# Latest Claude models (as of 2026)
 # Note: All these models support "Extended thinking" capability for deep reasoning
 claude_models = [
-    "claude-opus-4-6",  # Latest premium model with enhanced intelligence and performance
+    "claude-opus-4-6",  # Latest premium model with enhanced intelligence and performance (Feb 5, 2026)
+    "claude-sonnet-4-6",  # Most capable Sonnet yet, preferred over Opus 4.5 (Feb 17, 2026)
     "claude-opus-4-5",  # Premium model combining maximum intelligence with practical performance
-    "claude-sonnet-4-5",  # Our best model for real-world agents and coding
+    "claude-sonnet-4-5",  # Previous generation Sonnet for real-world agents and coding
     "claude-haiku-4-5",  # Hybrid model, capable of near-instant responses and extended thinking
 ]
 
