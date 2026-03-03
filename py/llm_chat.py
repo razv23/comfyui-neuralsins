@@ -30,9 +30,6 @@ openai_models = [
     "gpt-5.3-codex",  # Latest agentic coding model, 25% faster, helped build itself
     "gpt-5.2",  # The best model for coding and agentic tasks across industries
     "gpt-5.2-pro",  # Version of GPT-5.2 that produces smarter and more precise responses
-    "gpt-5-pro",  # Version of GPT-5 that produces smarter and more precise responses
-    "gpt-5-mini",  # Faster, cost-efficient version of GPT-5 for well-defined tasks
-    "gpt-5-nano",  # Fastest, most cost-efficient version of GPT-5
 ]
 
 # xAI Grok models (as of 2026)
