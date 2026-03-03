@@ -14,8 +14,6 @@ from torch import Tensor
 claude_models = [
     "claude-opus-4-6",  # Latest premium model with enhanced intelligence and performance (Feb 5, 2026)
     "claude-sonnet-4-6",  # Most capable Sonnet yet, preferred over Opus 4.5 (Feb 17, 2026)
-    "claude-opus-4-5",  # Premium model combining maximum intelligence with practical performance
-    "claude-sonnet-4-5",  # Previous generation Sonnet for real-world agents and coding
     "claude-haiku-4-5",  # Hybrid model, capable of near-instant responses and extended thinking
 ]
 
@@ -32,7 +30,6 @@ openai_models = [
     "gpt-5.3-codex",  # Latest agentic coding model, 25% faster, helped build itself
     "gpt-5.2",  # The best model for coding and agentic tasks across industries
     "gpt-5.2-pro",  # Version of GPT-5.2 that produces smarter and more precise responses
-    "gpt-5",  # Intelligent reasoning model for coding and agentic tasks
     "gpt-5-pro",  # Version of GPT-5 that produces smarter and more precise responses
     "gpt-5-mini",  # Faster, cost-efficient version of GPT-5 for well-defined tasks
     "gpt-5-nano",  # Fastest, most cost-efficient version of GPT-5
