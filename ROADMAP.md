@@ -4,3 +4,6 @@
 https://docs.comfy.org/registry/publishing
 
 3. add token count/cost
+
+4. add nano banana2 custom node - add check internet for reference button
+check if there are already comfy ui default custom nodes for this

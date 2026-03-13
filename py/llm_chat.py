@@ -17,11 +17,12 @@ claude_models = [
     "claude-haiku-4-5",  # Hybrid model, capable of near-instant responses and extended thinking
 ]
 
-# Google Gemini models (as of 2025)
-# Gemini 3 Series only - Latest generation
+# Google Gemini models (as of 2026)
 gemini_models = [
-    "gemini-3-pro-preview",  # Most intelligent, best for complex reasoning and analysis (1M context)
-    "gemini-3-flash-preview",  # Most balanced for speed, scale, and frontier intelligence (1M context)
+    "gemini-3.1-pro-preview",  # Latest, most intelligent for complex reasoning and analysis (1M context)
+    "gemini-3-flash-preview",  # Balanced for speed, scale, and frontier intelligence (1M context)
+    "gemini-2.5-pro",  # Stable production model, strong reasoning (1M context)
+    "gemini-2.5-flash",  # Stable production model, fast and efficient (1M context)
 ]
 
 # OpenAI GPT models (as of 2025)
