@@ -93,7 +93,7 @@ def call_claude_api(
     timeout: int = 500,
     endpoint: str = "https://api.anthropic.com",
 ):
-    """Single function to call Claude API with text and optional image
+    """Call Claude API with text and optional images (batch supported).
 
     Note: Claude API does not natively support seed parameter for reproducible outputs.
     The seed parameter is included for UI consistency but does not affect Claude's output.
@@ -102,24 +102,24 @@ def call_claude_api(
     # Build message content
     content = []
 
-    # Add image if provided
+    # Add images if provided
     if image is not None:
-        if len(image.shape) == 4:  # Batch of images - just use first one
-            pil_image = tensor2pil(image[0])
-        else:
-            pil_image = tensor2pil(image)
-
-        image_base64 = pil2base64(pil_image)
-        content.append(
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": image_base64,
-                },
-            }
-        )
+        images = [image] if len(image.shape) == 3 else [image[i] for i in range(image.shape[0])]
+        for idx, img in enumerate(images):
+            pil_image = tensor2pil(img)
+            image_base64 = pil2base64(pil_image)
+            if len(images) > 1:
+                content.append({"type": "text", "text": f"Image {idx + 1}:"})
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": image_base64,
+                    },
+                }
+            )
 
     # Add text
     content.append({"type": "text", "text": prompt})
@@ -177,7 +177,7 @@ def call_gemini_api(
     seed: int = -1,
     timeout: int = 500,
 ):
-    """Single function to call Gemini API with text and optional image
+    """Call Gemini API with text and optional images (batch supported).
 
     Supports seed parameter for reproducible outputs when seed != -1.
     """
@@ -193,15 +193,15 @@ def call_gemini_api(
     # Build content parts
     parts = []
 
-    # Add image if provided
+    # Add images if provided
     if image is not None:
-        if len(image.shape) == 4:  # Batch of images - just use first one
-            pil_image = tensor2pil(image[0])
-        else:
-            pil_image = tensor2pil(image)
-
-        image_base64 = pil2base64(pil_image)
-        parts.append({"inline_data": {"mime_type": "image/png", "data": image_base64}})
+        images = [image] if len(image.shape) == 3 else [image[i] for i in range(image.shape[0])]
+        for idx, img in enumerate(images):
+            pil_image = tensor2pil(img)
+            image_base64 = pil2base64(pil_image)
+            if len(images) > 1:
+                parts.append({"text": f"Image {idx + 1}:"})
+            parts.append({"inline_data": {"mime_type": "image/png", "data": image_base64}})
 
     # Add text
     parts.append({"text": prompt})
@@ -270,8 +270,8 @@ def call_grok_api(
     seed: int = -1,
     timeout: int = 500,
 ):
-    """Single function to call xAI Grok API with text and optional image
-    
+    """Call xAI Grok API with text and optional images (batch supported).
+
     Uses OpenAI-compatible chat completions endpoint.
     Grok models support seed parameter for reproducible outputs when seed != -1.
     """
@@ -279,21 +279,21 @@ def call_grok_api(
     # Build message content
     content = []
     
-    # Add image if provided
+    # Add images if provided
     if image is not None:
-        if len(image.shape) == 4:  # Batch of images - just use first one
-            pil_image = tensor2pil(image[0])
-        else:
-            pil_image = tensor2pil(image)
-        
-        image_base64 = pil2base64(pil_image)
-        content.append({
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/png;base64,{image_base64}",
-            }
-        })
-    
+        images = [image] if len(image.shape) == 3 else [image[i] for i in range(image.shape[0])]
+        for idx, img in enumerate(images):
+            pil_image = tensor2pil(img)
+            image_base64 = pil2base64(pil_image)
+            if len(images) > 1:
+                content.append({"type": "text", "text": f"Image {idx + 1}:"})
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/png;base64,{image_base64}",
+                }
+            })
+
     # Add text
     content.append({"type": "text", "text": prompt})
     
