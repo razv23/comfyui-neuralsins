@@ -361,7 +361,7 @@ class NSLLMChat:
         return {
             "required": {
                 "api_key": ("STRING", {"multiline": False}),
-                "model": (all_models, {"default": "claude-sonnet-4-5"}),  # Latest & best for agents/coding
+                "model": (all_models, {"default": "claude-sonnet-4-6"}),
                 "prompt": ("STRING", {"multiline": True}),
                 "max_tokens": ("INT", {"default": 4096, "min": 1, "max": 200000}),
                 "temperature": (
