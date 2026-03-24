@@ -389,6 +389,7 @@ class NSLLMChat:
                 ),
             },
             "optional": {
+                "model_override": ("STRING", {"forceInput": True, "tooltip": "Connect an NS LLM Model Selector to control the model from a single node."}),
                 "system_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "image": ("IMAGE",),
             },
@@ -408,9 +409,14 @@ class NSLLMChat:
         temperature: float,
         seed: int,
         timeout: int,
+        model_override: Optional[str] = None,
         system_prompt: str = "",
         image: Optional[Tensor] = None,
     ):
+        # Use connected model if provided
+        if model_override and model_override.strip():
+            model = model_override.strip()
+
         # Check for API key in environment if not provided
         if not api_key or api_key.strip() == "":
             if model in gemini_models:
