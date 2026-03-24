@@ -40,5 +40,8 @@ env/
 # Config files with sensitive data
 config.ini
 
+# Reference workflows (may contain API keys)
+reference/
+
 # ComfyUI specific
 *.log
