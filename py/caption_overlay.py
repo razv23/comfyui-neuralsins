@@ -125,7 +125,7 @@ class NSCaptionOverlay:
         json.dump(props, props_path)
         props_path.close()
 
-        n_workers = max(2, min(os.cpu_count() or 4, 8))
+        n_workers = max(1, min(os.cpu_count() or 4, 8))
 
         try:
             entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
