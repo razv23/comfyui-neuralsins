@@ -252,7 +252,13 @@ class NSCaptionOverlay:
 
             model_id = _whisper_models.resolve_model(model_size)
             print(f"[NSCaptionOverlay] Transcribing with whisper '{model_id}'...")
-            model = WhisperModel(model_id, compute_type="auto")
+            try:
+                import ctypes
+                ctypes.cdll.LoadLibrary("libcublas.so.12")
+                model = WhisperModel(model_id, compute_type="int8")
+            except (OSError, Exception):
+                print("[NSCaptionOverlay] CUDA not available, using CPU")
+                model = WhisperModel(model_id, device="cpu", compute_type="float32")
             lang = None if language == "auto" else language
             segments, info = model.transcribe(
                 wav_path, language=lang, word_timestamps=True, vad_filter=True

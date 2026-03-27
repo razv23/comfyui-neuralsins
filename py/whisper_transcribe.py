@@ -129,7 +129,13 @@ class NSWhisperTranscribe:
             # Resolve model: custom path > fine-tuned lookup > standard size
             model_id = _whisper_models.resolve_model(model_size)
             print(f"[NSWhisperTranscribe] Loading model '{model_id}'...")
-            model = WhisperModel(model_id, compute_type="auto")
+            try:
+                import ctypes
+                ctypes.cdll.LoadLibrary("libcublas.so.12")
+                model = WhisperModel(model_id, compute_type="int8")
+            except (OSError, Exception):
+                print("[NSWhisperTranscribe] CUDA not available, using CPU")
+                model = WhisperModel(model_id, device="cpu", compute_type="float32")
 
             lang = None if language == "auto" else language
             print(f"[NSWhisperTranscribe] Transcribing (language={language})...")
