@@ -2,7 +2,6 @@
 # ABOUTME: Mixes generated music under the full video audio using FFmpeg
 
 import os
-import shutil
 import subprocess
 import tempfile
 import time
@@ -14,8 +13,7 @@ import torch
 import requests
 import folder_paths
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
+from ._bins import FFMPEG, FFPROBE
 
 ELEVENLABS_MUSIC_URL = "https://api.elevenlabs.io/v1/music"
 

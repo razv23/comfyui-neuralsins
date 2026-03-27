@@ -4,13 +4,11 @@
 import os
 import subprocess
 import tempfile
-import shutil
 import json
 
 import torch
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
+from ._bins import FFMPEG, FFPROBE
 
 
 class NSGetVideoComponents:

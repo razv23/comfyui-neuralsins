@@ -4,11 +4,8 @@
 import os
 import subprocess
 import tempfile
-import shutil
-
 from . import _whisper_models
-
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
+from ._bins import FFMPEG
 
 
 class NSWhisperTranscribe:

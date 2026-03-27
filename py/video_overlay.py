@@ -10,8 +10,7 @@ import json
 
 import folder_paths
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
+from ._bins import FFMPEG, FFPROBE
 
 NODE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

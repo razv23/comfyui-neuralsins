@@ -10,13 +10,8 @@ import time
 
 import folder_paths
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
-NODE_BIN = shutil.which("node") or "/opt/homebrew/bin/node"
-NPX_BIN = shutil.which("npx") or "/opt/homebrew/bin/npx"
-NPM_BIN = shutil.which("npm") or "/opt/homebrew/bin/npm"
-
 from . import _whisper_models
+from ._bins import FFMPEG, FFPROBE, NODE_BIN, NPX_BIN, NPM_BIN
 
 REMOTION_DIR = os.path.join(os.path.dirname(__file__), "..", "remotion")
 REMOTION_BUNDLE = os.path.join(REMOTION_DIR, "bundle")

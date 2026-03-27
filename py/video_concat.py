@@ -5,13 +5,11 @@ import os
 import subprocess
 import tempfile
 import time
-import shutil
 import json
 
 import folder_paths
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
+from ._bins import FFMPEG, FFPROBE
 
 # Quartic ease-out slideup for TikTok-style swipe.
 # Fast start, long smooth deceleration — like a real finger flick.

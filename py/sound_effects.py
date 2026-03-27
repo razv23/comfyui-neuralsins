@@ -4,7 +4,6 @@
 import os
 import re
 import json
-import shutil
 import subprocess
 import tempfile
 import time
@@ -12,8 +11,7 @@ import time
 import requests
 import folder_paths
 
-FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
-FFPROBE = shutil.which("ffprobe") or "/opt/homebrew/bin/ffprobe"
+from ._bins import FFMPEG, FFPROBE
 
 ELEVENLABS_SFX_URL = "https://api.elevenlabs.io/v1/sound-generation"
 
