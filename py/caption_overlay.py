@@ -125,8 +125,6 @@ class NSCaptionOverlay:
         json.dump(props, props_path)
         props_path.close()
 
-        n_workers = max(1, min(os.cpu_count() or 4, 8))
-
         try:
             entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
@@ -137,12 +135,10 @@ class NSCaptionOverlay:
                 "--prores-profile=4444",
                 "--pixel-format=yuva444p10le",
                 "--image-format=png",
-                f"--concurrency={n_workers}",
                 f"--output={overlay_path}",
                 "--log=error",
             ]
-            print(f"[NSCaptionOverlay] Rendering {props['durationInFrames']} frames "
-                  f"(concurrency={n_workers})...")
+            print(f"[NSCaptionOverlay] Rendering {props['durationInFrames']} frames...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
