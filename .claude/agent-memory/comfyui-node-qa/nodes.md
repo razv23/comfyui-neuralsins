@@ -15,6 +15,9 @@
 - Grok nodes: grok_imagine_image.py, grok_imagine_video.py, grok_client.py
 - LLM Chat: llm_chat.py
 
+## Audio Nodes
+- **NSVoiceAtmosphere** (py/voice_atmosphere.py) - Adds background noise (pink/white/brown) and synthetic reverb to AUDIO. Uses scipy.signal.fftconvolve (lazy-imported). QA: PASS.
+
 ## Utility Nodes
 - NSPromptList: py/prompt_list_node.py
 - NSQwenResolution: py/qwen_resolution_node.py

@@ -32,3 +32,11 @@
 ## Temp File Cleanup
 - All nodes use try/finally with temp_files list
 - `os.unlink(f)` in finally block, wrapped in try/except OSError
+
+## AUDIO Type Convention
+- Dict with `{"waveform": tensor, "sample_rate": int}`
+- Waveform shape: `(batch, channels, samples)` -- 3D tensor
+- Core ref: `LoadAudio` does `waveform.unsqueeze(0)` to add batch dim
+- Core ref: `EmptyAudio` creates `torch.zeros((1, channels, num_samples))`
+- Type string is `"AUDIO"` (plain string, same as VIDEO convention)
+- scipy is available in the environment (1.13.1) and used by voice_atmosphere.py and video_components.py

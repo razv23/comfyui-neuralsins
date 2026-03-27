@@ -42,3 +42,6 @@ config.ini
 
 # ComfyUI specific
 *.log
+
+# Downloaded models (large binary files)
+models/

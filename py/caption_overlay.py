@@ -16,7 +16,10 @@ NODE_BIN = shutil.which("node") or "/opt/homebrew/bin/node"
 NPX_BIN = shutil.which("npx") or "/opt/homebrew/bin/npx"
 NPM_BIN = shutil.which("npm") or "/opt/homebrew/bin/npm"
 
+from . import _whisper_models
+
 REMOTION_DIR = os.path.join(os.path.dirname(__file__), "..", "remotion")
+REMOTION_BUNDLE = os.path.join(REMOTION_DIR, "bundle")
 
 # ComfyUI.app has a restricted PATH — ensure node/npm directories are included
 _node_dir = os.path.dirname(NODE_BIN)
@@ -41,6 +44,7 @@ class NSCaptionOverlay:
             },
             "optional": {
                 "caption_style": ("CAPTION_STYLE",),
+                "transcript": ("TRANSCRIPT",),
             }
         }
 
@@ -80,6 +84,23 @@ class NSCaptionOverlay:
                 )
             print("[NSCaptionOverlay] Dependencies installed.")
 
+        # Pre-build the Remotion bundle so renders skip TypeScript compilation
+        bundle_index = os.path.join(REMOTION_BUNDLE, "index.html")
+        if not os.path.isfile(bundle_index):
+            print("[NSCaptionOverlay] Building Remotion bundle...")
+            result = subprocess.run(
+                [NPX_BIN, "remotion", "bundle", "src/index.ts",
+                 f"--out-dir={REMOTION_BUNDLE}"],
+                cwd=REMOTION_DIR,
+                capture_output=True, text=True,
+                env=_env,
+            )
+            if result.returncode != 0:
+                print(f"[NSCaptionOverlay] Bundle build failed, will use source: "
+                      f"{result.stderr[-500:]}")
+            else:
+                print("[NSCaptionOverlay] Bundle built.")
+
         _deps_checked = True
 
     def _get_video_info(self, path):
@@ -102,7 +123,7 @@ class NSCaptionOverlay:
         return fps, width, height, duration
 
     def _render_overlay(self, props, overlay_path):
-        """Render caption overlay as VP8 WebM with alpha using Remotion."""
+        """Render caption overlay as ProRes 4444 with alpha using Remotion."""
         props_path = tempfile.NamedTemporaryFile(
             suffix=".json", delete=False, mode="w"
         )
@@ -112,13 +133,15 @@ class NSCaptionOverlay:
         n_workers = max(2, min(os.cpu_count() or 4, 8))
 
         try:
+            entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
                 NPX_BIN, "remotion", "render",
-                "src/index.ts", "CaptionOverlay",
+                entry, "CaptionOverlay",
                 f"--props={props_path.name}",
-                "--codec=vp8",
+                "--codec=prores",
+                "--prores-profile=4444",
+                "--pixel-format=yuva444p10le",
                 "--image-format=png",
-                "--pixel-format=yuva420p",
                 f"--concurrency={n_workers}",
                 f"--output={overlay_path}",
                 "--log=error",
@@ -143,11 +166,11 @@ class NSCaptionOverlay:
                 pass
 
     def _composite(self, original_path, overlay_path, output_path):
-        """Composite VP8 WebM overlay onto the original video with FFmpeg."""
+        """Composite ProRes 4444 overlay onto the original video with FFmpeg."""
         cmd = [
             FFMPEG, "-y",
             "-i", original_path,
-            "-c:v", "libvpx", "-i", overlay_path,
+            "-i", overlay_path,
             "-filter_complex", "[0:v][1:v]overlay=format=auto[outv]",
             "-map", "[outv]",
             "-map", "0:a?",
@@ -198,7 +221,7 @@ class NSCaptionOverlay:
                 "durationInFrames": duration_in_frames,
             }
 
-            overlay_path = tempfile.NamedTemporaryFile(suffix=".webm", delete=False).name
+            overlay_path = tempfile.NamedTemporaryFile(suffix=".mov", delete=False).name
             temp_files.append(overlay_path)
 
             self._render_overlay(props, overlay_path)
@@ -227,8 +250,9 @@ class NSCaptionOverlay:
                 print("[NSCaptionOverlay] No audio stream, returning empty transcript")
                 return []
 
-            print(f"[NSCaptionOverlay] Transcribing with whisper '{model_size}'...")
-            model = WhisperModel(model_size, compute_type="int8")
+            model_id = _whisper_models.resolve_model(model_size)
+            print(f"[NSCaptionOverlay] Transcribing with whisper '{model_id}'...")
+            model = WhisperModel(model_id, compute_type="auto")
             lang = None if language == "auto" else language
             segments, info = model.transcribe(
                 wav_path, language=lang, word_timestamps=True, vad_filter=True
@@ -252,7 +276,7 @@ class NSCaptionOverlay:
             except OSError:
                 pass
 
-    def execute(self, video, caption_style=None):
+    def execute(self, video, caption_style=None, transcript=None):
         from comfy_api.latest import InputImpl
 
         style = caption_style or {}
@@ -287,11 +311,35 @@ class NSCaptionOverlay:
             temp_files.append(original_path)
             video.save_to(original_path, format="mp4", codec="h264")
 
-            words = self._transcribe(original_path, language, whisper_model)
+            # Use provided transcript or run internal whisper
+            # Handle both dict (from Whisper nodes) and JSON string (from LLM nodes)
+            if transcript:
+                if isinstance(transcript, str):
+                    import json
+                    import re
+                    # Strip markdown code fences (```json ... ```)
+                    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", transcript.strip())
+                    cleaned = re.sub(r"\n?```\s*$", "", cleaned).strip()
+                    try:
+                        transcript = json.loads(cleaned)
+                    except (json.JSONDecodeError, ValueError):
+                        transcript = None
+                if isinstance(transcript, dict) and transcript.get("words"):
+                    words = transcript["words"]
+                    print(f"[NSCaptionOverlay] Using provided transcript ({len(words)} words)")
+                else:
+                    transcript = None
+            if not transcript:
+                words = self._transcribe(original_path, language, whisper_model)
 
             if not words:
                 print("[NSCaptionOverlay] No speech detected, returning original video")
                 return (video,)
+
+            # Clean punctuation artifacts from words (em dashes, quotes, etc.)
+            for w in words:
+                w["word"] = w["word"].strip("\u2013\u2014-\"'\u00ab\u00bb\u201e\u201c\u201d")
+            words = [w for w in words if w["word"]]
 
             settings["words"] = words
 
@@ -334,12 +382,11 @@ class NSCaptionStyle:
                 "font_color": ("STRING", {"default": ""}),
                 "highlight_color": ("STRING", {"default": ""}),
                 "emojis": ("BOOLEAN", {"default": True}),
-                "language": (["auto", "en", "es", "fr", "de", "it", "pt", "nl",
+                "language": (["auto", "en", "el", "es", "fr", "de", "it", "pt", "nl",
                               "ja", "ko", "zh", "ru", "ar", "hi", "cs", "pl",
                               "tr", "uk", "ro", "sv", "da", "fi", "no", "hu"],
                              {"default": "auto"}),
-                "whisper_model": (["tiny", "base", "small", "medium", "large-v3"],
-                                  {"default": "base"}),
+                "whisper_model": (_whisper_models.ALL_MODELS, {"default": "base"}),
             }
         }
 

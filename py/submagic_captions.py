@@ -20,7 +20,7 @@ SUBMAGIC_TEMPLATES = [
 ]
 
 SUBMAGIC_LANGUAGES = [
-    "en", "es", "fr", "de", "it", "pt", "nl", "ru",
+    "en", "el", "es", "fr", "de", "it", "pt", "nl", "ru",
     "zh", "ja", "ko", "ar", "hi",
 ]
 

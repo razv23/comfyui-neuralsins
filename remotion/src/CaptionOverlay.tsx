@@ -12,25 +12,43 @@ import { TEMPLATES } from "./templates";
 import { findEmoji } from "./emoji-map";
 import { WordChunk } from "./components/WordChunk";
 
+const SENTENCE_END = /[.!?;·]$/;
+const PAUSE_THRESHOLD = 0.3; // seconds
+
 function buildChunks(
   words: Word[],
   wordsPerLine: number,
   withEmoji: boolean
 ): WordChunkType[] {
   const chunks: WordChunkType[] = [];
+  let current: Word[] = [];
 
-  for (let i = 0; i < words.length; i += wordsPerLine) {
-    const chunkWords = words.slice(i, i + wordsPerLine);
-    const startTime = chunkWords[0].start;
-    const endTime = chunkWords[chunkWords.length - 1].end;
-
+  const flush = () => {
+    if (current.length === 0) return;
+    const startTime = current[0].start;
+    const endTime = current[current.length - 1].end;
     const emoji = withEmoji
-      ? findEmoji(chunkWords.map((w) => w.word))
+      ? findEmoji(current.map((w) => w.word))
       : undefined;
+    chunks.push({ words: [...current], startTime, endTime, emoji });
+    current = [];
+  };
 
-    chunks.push({ words: chunkWords, startTime, endTime, emoji });
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    current.push(word);
+
+    const atMaxWords = current.length >= wordsPerLine;
+    const atSentenceEnd = SENTENCE_END.test(word.word);
+    const hasGap =
+      i < words.length - 1 && words[i + 1].start - word.end >= PAUSE_THRESHOLD;
+
+    if (atMaxWords || atSentenceEnd || hasGap) {
+      flush();
+    }
   }
 
+  flush();
   return chunks;
 }
 
