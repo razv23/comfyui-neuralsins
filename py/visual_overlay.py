@@ -678,6 +678,16 @@ class NSVisualOverlay:
             n_cores = os.cpu_count() or 1
         return max(1, min(n_cores // 2, 6))
 
+    @staticmethod
+    def _kill_stale_chrome():
+        """Kill leftover Chrome processes from previous renders."""
+        import platform
+        if platform.system() != "Linux":
+            return
+        subprocess.run(["pkill", "-9", "-f", "headless.*remotion"],
+                       capture_output=True, text=True)
+        time.sleep(1)
+
     def _render_overlay(self, props, overlay_path):
         """Call Remotion CLI to render the transparent visual overlay."""
         props_path = tempfile.NamedTemporaryFile(
@@ -704,13 +714,20 @@ class NSVisualOverlay:
             render_timeout = max(600, n_frames * 3)
             print(f"[NSVisualOverlay] Rendering overlay ({n_frames} frames, "
                   f"concurrency={concurrency}, timeout={render_timeout}s)...")
-            result = subprocess.run(
-                cmd, cwd=REMOTION_DIR,
-                capture_output=True, text=True,
-                timeout=render_timeout,
-                env=_env,
-            )
-            if result.returncode != 0:
+
+            for attempt in range(3):
+                result = subprocess.run(
+                    cmd, cwd=REMOTION_DIR,
+                    capture_output=True, text=True,
+                    timeout=render_timeout,
+                    env=_env,
+                )
+                if result.returncode == 0:
+                    break
+                if attempt < 2 and "Timed out" in result.stderr:
+                    print(f"[NSVisualOverlay] Chrome launch failed (attempt {attempt + 1}), cleaning up...")
+                    self._kill_stale_chrome()
+                    continue
                 raise RuntimeError(
                     f"Remotion render failed:\n{result.stderr[-1500:]}"
                 )

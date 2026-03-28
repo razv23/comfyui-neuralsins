@@ -142,13 +142,15 @@ class NSVideoEffects:
         print(f"[NSVideoEffects] Face detection: {len(positions)} samples, {total_samples} expected")
         return positions
 
-    def _get_concurrency(self):
-        """Detect available CPU cores, respecting cgroup limits on Linux pods."""
-        try:
-            n_cores = len(os.sched_getaffinity(0))
-        except AttributeError:
-            n_cores = os.cpu_count() or 1
-        return max(1, min(n_cores // 2, 6))
+    @staticmethod
+    def _kill_stale_chrome():
+        """Kill leftover Chrome processes from previous renders."""
+        import platform
+        if platform.system() != "Linux":
+            return
+        subprocess.run(["pkill", "-9", "-f", "headless.*remotion"],
+                       capture_output=True, text=True)
+        time.sleep(1)
 
     def _render_video(self, props, output_path):
         """Call Remotion CLI to render the VideoEffects composition."""
@@ -159,28 +161,33 @@ class NSVideoEffects:
         props_path.close()
 
         try:
-            concurrency = self._get_concurrency()
             entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
                 NPX_BIN, "remotion", "render",
                 entry, "VideoEffects",
                 f"--props={props_path.name}",
                 "--codec=h264",
-                f"--concurrency={concurrency}",
                 f"--output={output_path}",
                 "--log=error",
             ]
             n_frames = props['durationInFrames']
             render_timeout = max(600, n_frames * 3)
             print(f"[NSVideoEffects] Rendering {n_frames} frames "
-                  f"(concurrency={concurrency}, timeout={render_timeout}s)...")
-            result = subprocess.run(
-                cmd, cwd=REMOTION_DIR,
-                capture_output=True, text=True,
-                timeout=render_timeout,
-                env=_env,
-            )
-            if result.returncode != 0:
+                  f"(timeout={render_timeout}s)...")
+
+            for attempt in range(3):
+                result = subprocess.run(
+                    cmd, cwd=REMOTION_DIR,
+                    capture_output=True, text=True,
+                    timeout=render_timeout,
+                    env=_env,
+                )
+                if result.returncode == 0:
+                    break
+                if attempt < 2 and "Timed out" in result.stderr:
+                    print(f"[NSVideoEffects] Chrome launch failed (attempt {attempt + 1}), cleaning up...")
+                    self._kill_stale_chrome()
+                    continue
                 raise RuntimeError(
                     f"Remotion render failed:\n{result.stderr[-1500:]}"
                 )

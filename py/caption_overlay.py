@@ -126,6 +126,16 @@ class NSCaptionOverlay:
         # Cap at 6 to avoid Chrome memory thrashing on pods
         return max(1, min(n_cores // 2, 6))
 
+    @staticmethod
+    def _kill_stale_chrome():
+        """Kill leftover Chrome processes from previous renders."""
+        import platform
+        if platform.system() != "Linux":
+            return
+        subprocess.run(["pkill", "-9", "-f", "headless.*remotion"],
+                       capture_output=True, text=True)
+        time.sleep(1)
+
     def _render_sequence(self, props, frames_dir):
         """Render transparent caption overlay as a PNG image sequence."""
         props_path = tempfile.NamedTemporaryFile(
@@ -150,13 +160,20 @@ class NSCaptionOverlay:
             render_timeout = max(600, n_frames * 3)
             print(f"[NSCaptionOverlay] Rendering {n_frames} frames "
                   f"(PNG sequence, concurrency={concurrency}, timeout={render_timeout}s)...")
-            result = subprocess.run(
-                cmd, cwd=REMOTION_DIR,
-                capture_output=True, text=True,
-                timeout=render_timeout,
-                env=_env,
-            )
-            if result.returncode != 0:
+
+            for attempt in range(3):
+                result = subprocess.run(
+                    cmd, cwd=REMOTION_DIR,
+                    capture_output=True, text=True,
+                    timeout=render_timeout,
+                    env=_env,
+                )
+                if result.returncode == 0:
+                    break
+                if attempt < 2 and "Timed out" in result.stderr:
+                    print(f"[NSCaptionOverlay] Chrome launch failed (attempt {attempt + 1}), cleaning up...")
+                    self._kill_stale_chrome()
+                    continue
                 raise RuntimeError(
                     f"Remotion render failed:\n{result.stderr[-1500:]}"
                 )
