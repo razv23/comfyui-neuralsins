@@ -138,11 +138,14 @@ class NSCaptionOverlay:
                 f"--output={overlay_path}",
                 "--log=error",
             ]
-            print(f"[NSCaptionOverlay] Rendering {props['durationInFrames']} frames...")
+            n_frames = props['durationInFrames']
+            render_timeout = max(600, n_frames * 3)
+            print(f"[NSCaptionOverlay] Rendering {n_frames} frames "
+                  f"(timeout={render_timeout}s)...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
-                timeout=600,
+                timeout=render_timeout,
                 env=_env,
             )
             if result.returncode != 0:
