@@ -13,6 +13,7 @@ import folder_paths
 from ._bins import FFMPEG, FFPROBE, NODE_BIN, NPX_BIN, NPM_BIN
 
 REMOTION_DIR = os.path.join(os.path.dirname(__file__), "..", "remotion")
+REMOTION_BUNDLE = os.path.join(REMOTION_DIR, "bundle")
 
 # ComfyUI.app has a restricted PATH — ensure node/npm directories are included
 _node_dir = os.path.dirname(NODE_BIN)
@@ -141,6 +142,14 @@ class NSVideoEffects:
         print(f"[NSVideoEffects] Face detection: {len(positions)} samples, {total_samples} expected")
         return positions
 
+    def _get_concurrency(self):
+        """Detect available CPU cores, respecting cgroup limits on Linux pods."""
+        try:
+            n_cores = len(os.sched_getaffinity(0))
+        except AttributeError:
+            n_cores = os.cpu_count() or 1
+        return max(1, min(n_cores // 2, 6))
+
     def _render_video(self, props, output_path):
         """Call Remotion CLI to render the VideoEffects composition."""
         props_path = tempfile.NamedTemporaryFile(
@@ -150,20 +159,25 @@ class NSVideoEffects:
         props_path.close()
 
         try:
+            concurrency = self._get_concurrency()
+            entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
                 NPX_BIN, "remotion", "render",
-                "src/index.ts", "VideoEffects",
+                entry, "VideoEffects",
                 f"--props={props_path.name}",
                 "--codec=h264",
+                f"--concurrency={concurrency}",
                 f"--output={output_path}",
                 "--log=error",
-                "--concurrency=1",
             ]
-            print(f"[NSVideoEffects] Rendering ({props['durationInFrames']} frames)...")
+            n_frames = props['durationInFrames']
+            render_timeout = max(600, n_frames * 3)
+            print(f"[NSVideoEffects] Rendering {n_frames} frames "
+                  f"(concurrency={concurrency}, timeout={render_timeout}s)...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
-                timeout=600,
+                timeout=render_timeout,
                 env=_env,
             )
             if result.returncode != 0:

@@ -19,6 +19,7 @@ from .llm_chat import claude_models
 from ._bins import FFMPEG, FFPROBE, NODE_BIN, NPX_BIN, NPM_BIN
 
 REMOTION_DIR = os.path.join(os.path.dirname(__file__), "..", "remotion")
+REMOTION_BUNDLE = os.path.join(REMOTION_DIR, "bundle")
 
 _node_dir = os.path.dirname(NODE_BIN)
 _env = os.environ.copy()
@@ -669,6 +670,14 @@ class NSVisualOverlay:
         print(f"[NSVisualOverlay] Generated {len(cues)} visual cues ({len(raw_cues) - len(cues)} dropped)")
         return cues
 
+    def _get_concurrency(self):
+        """Detect available CPU cores, respecting cgroup limits on Linux pods."""
+        try:
+            n_cores = len(os.sched_getaffinity(0))
+        except AttributeError:
+            n_cores = os.cpu_count() or 1
+        return max(1, min(n_cores // 2, 6))
+
     def _render_overlay(self, props, overlay_path):
         """Call Remotion CLI to render the transparent visual overlay."""
         props_path = tempfile.NamedTemporaryFile(
@@ -678,22 +687,27 @@ class NSVisualOverlay:
         props_path.close()
 
         try:
+            concurrency = self._get_concurrency()
+            entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
                 NPX_BIN, "remotion", "render",
-                "src/index.ts", "VisualOverlay",
+                entry, "VisualOverlay",
                 f"--props={props_path.name}",
                 "--codec=vp9",
                 "--image-format=png",
                 "--pixel-format=yuva420p",
+                f"--concurrency={concurrency}",
                 f"--output={overlay_path}",
                 "--log=error",
-                "--concurrency=1",
             ]
-            print(f"[NSVisualOverlay] Rendering overlay ({props['durationInFrames']} frames)...")
+            n_frames = props['durationInFrames']
+            render_timeout = max(600, n_frames * 3)
+            print(f"[NSVisualOverlay] Rendering overlay ({n_frames} frames, "
+                  f"concurrency={concurrency}, timeout={render_timeout}s)...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
-                timeout=600,
+                timeout=render_timeout,
                 env=_env,
             )
             if result.returncode != 0:
