@@ -202,9 +202,10 @@ class NSCaptionOverlay:
         try:
             fps, width, height, duration = self._get_video_info(input_path)
 
-            # Render captions at 10fps — spring animations are FPS-aware so they
-            # look the same, just sampled at fewer points. Cuts render time ~3x.
-            render_fps = min(round(fps), 10)
+            # Render captions at half the video FPS — spring animations are FPS-aware
+            # so they look the same, just sampled at fewer points. Each caption frame
+            # is held for exactly 2 video frames, which looks smooth for text.
+            render_fps = max(12, round(fps / 2))
             render_frames = int(round(duration * render_fps))
 
             font_color = settings.get("fontColor", "")
