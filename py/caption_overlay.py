@@ -117,6 +117,14 @@ class NSCaptionOverlay:
         fps = float(num) / float(den)
         return fps, width, height, duration
 
+    def _get_concurrency(self):
+        """Detect available CPU cores, respecting cgroup limits on Linux pods."""
+        try:
+            n_cores = len(os.sched_getaffinity(0))
+        except AttributeError:
+            n_cores = os.cpu_count() or 1
+        return max(1, n_cores - 1)
+
     def _render_sequence(self, props, frames_dir):
         """Render transparent caption overlay as a PNG image sequence."""
         props_path = tempfile.NamedTemporaryFile(
@@ -126,19 +134,21 @@ class NSCaptionOverlay:
         props_path.close()
 
         try:
+            concurrency = self._get_concurrency()
             entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
             cmd = [
                 NPX_BIN, "remotion", "render",
                 entry, "CaptionOverlay",
                 f"--props={props_path.name}",
                 "--sequence", "--image-format=png",
+                f"--concurrency={concurrency}",
                 f"--output={frames_dir}",
                 "--log=error",
             ]
             n_frames = props['durationInFrames']
             render_timeout = max(600, n_frames * 3)
             print(f"[NSCaptionOverlay] Rendering {n_frames} frames "
-                  f"(PNG sequence, timeout={render_timeout}s)...")
+                  f"(PNG sequence, concurrency={concurrency}, timeout={render_timeout}s)...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
