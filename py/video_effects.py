@@ -230,8 +230,12 @@ class NSVideoEffects:
             if settings.get("face_tracking"):
                 face_positions = self._detect_face_positions(input_path, fps, duration)
 
-            # Copy video into Remotion's public/ dir so staticFile() can serve it
-            public_dir = os.path.join(REMOTION_DIR, "public")
+            # Copy video into the public/ dir that Remotion actually serves from
+            # (bundle/public/ when using pre-built bundle, remotion/public/ otherwise)
+            if os.path.isdir(REMOTION_BUNDLE):
+                public_dir = os.path.join(REMOTION_BUNDLE, "public")
+            else:
+                public_dir = os.path.join(REMOTION_DIR, "public")
             os.makedirs(public_dir, exist_ok=True)
             video_filename = f"effects_source_{int(time.time())}.mp4"
             public_video_path = os.path.join(public_dir, video_filename)
