@@ -42,7 +42,7 @@ interface VideoMeta {
   durationInFrames: number;
 }
 
-// Caption-only props (transparent overlay)
+// Caption props — renders on transparent or on embedded video background
 export interface CaptionProps extends VideoMeta {
   words: Word[];
   template: string;
@@ -53,6 +53,7 @@ export interface CaptionProps extends VideoMeta {
   fontColor: string | null;
   highlightColor: string | null;
   emojis: boolean;
+  videoSrc?: string | null;
 }
 
 // Visual cue types for infographic overlays

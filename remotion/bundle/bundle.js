@@ -11811,7 +11811,8 @@ const CaptionOverlay = ({
   fontColor: fontColorOverride,
   highlightColor: highlightColorOverride,
   emojis,
-  animation
+  animation,
+  videoSrc
 }) => {
   const frame = (0,cjs.useCurrentFrame)();
   const { fps } = (0,cjs.useVideoConfig)();
@@ -11827,32 +11828,41 @@ const CaptionOverlay = ({
     (c) => currentTime >= c.startTime && currentTime <= c.endTime
   );
   const topPercent = 5 + position / 100 * 85;
-  return /* @__PURE__ */ (0,jsx_runtime.jsx)(cjs.AbsoluteFill, { style: { backgroundColor: "transparent" }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
-    "div",
-    {
-      style: {
-        position: "absolute",
-        top: `${topPercent}%`,
-        left: "5%",
-        right: "5%",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center"
-      },
-      children: activeChunk && /* @__PURE__ */ (0,jsx_runtime.jsx)(
-        WordChunk,
-        {
-          chunk: activeChunk,
-          template,
-          fontSize,
-          fontColor,
-          highlightColor,
-          showEmoji: emojis,
-          animation
-        }
-      )
-    }
-  ) });
+  return /* @__PURE__ */ (0,jsx_runtime.jsxs)(cjs.AbsoluteFill, { style: { backgroundColor: videoSrc ? "black" : "transparent" }, children: [
+    videoSrc && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+      cjs.OffthreadVideo,
+      {
+        src: (0,cjs.staticFile)(videoSrc),
+        style: { width: "100%", height: "100%" }
+      }
+    ),
+    /* @__PURE__ */ (0,jsx_runtime.jsx)(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          top: `${topPercent}%`,
+          left: "5%",
+          right: "5%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        },
+        children: activeChunk && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+          WordChunk,
+          {
+            chunk: activeChunk,
+            template,
+            fontSize,
+            fontColor,
+            highlightColor,
+            showEmoji: emojis,
+            animation
+          }
+        )
+      }
+    )
+  ] });
 };
 
 ;// ./src/VideoEffects.tsx

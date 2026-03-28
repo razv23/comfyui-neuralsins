@@ -4,6 +4,8 @@
 import React, { useMemo } from "react";
 import {
   AbsoluteFill,
+  OffthreadVideo,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -62,6 +64,7 @@ export const CaptionOverlay: React.FC<CaptionProps> = ({
   highlightColor: highlightColorOverride,
   emojis,
   animation,
+  videoSrc,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -86,7 +89,13 @@ export const CaptionOverlay: React.FC<CaptionProps> = ({
   const topPercent = 5 + (position / 100) * 85;
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "transparent" }}>
+    <AbsoluteFill style={{ backgroundColor: videoSrc ? "black" : "transparent" }}>
+      {videoSrc && (
+        <OffthreadVideo
+          src={staticFile(videoSrc)}
+          style={{ width: "100%", height: "100%" }}
+        />
+      )}
       <div
         style={{
           position: "absolute",
