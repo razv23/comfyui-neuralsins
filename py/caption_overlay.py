@@ -117,20 +117,13 @@ class NSCaptionOverlay:
         fps = float(num) / float(den)
         return fps, width, height, duration
 
-    def _render(self, props, output_path):
-        """Render captioned video using Remotion (H264 with embedded video, or ProRes overlay)."""
+    def _render_sequence(self, props, frames_dir):
+        """Render transparent caption overlay as a PNG image sequence."""
         props_path = tempfile.NamedTemporaryFile(
             suffix=".json", delete=False, mode="w"
         )
         json.dump(props, props_path)
         props_path.close()
-
-        has_video = bool(props.get("videoSrc"))
-        codec_args = (
-            ["--codec=h264"] if has_video
-            else ["--codec=prores", "--prores-profile=4444",
-                  "--pixel-format=yuva444p10le", "--image-format=png"]
-        )
 
         try:
             entry = REMOTION_BUNDLE if os.path.isdir(REMOTION_BUNDLE) else "src/index.ts"
@@ -138,15 +131,14 @@ class NSCaptionOverlay:
                 NPX_BIN, "remotion", "render",
                 entry, "CaptionOverlay",
                 f"--props={props_path.name}",
-                *codec_args,
-                f"--output={output_path}",
+                "--sequence", "--image-format=png",
+                f"--output={frames_dir}",
                 "--log=error",
             ]
             n_frames = props['durationInFrames']
             render_timeout = max(600, n_frames * 3)
             print(f"[NSCaptionOverlay] Rendering {n_frames} frames "
-                  f"({'H264 direct' if has_video else 'ProRes overlay'}, "
-                  f"timeout={render_timeout}s)...")
+                  f"(PNG sequence, timeout={render_timeout}s)...")
             result = subprocess.run(
                 cmd, cwd=REMOTION_DIR,
                 capture_output=True, text=True,
@@ -164,22 +156,26 @@ class NSCaptionOverlay:
             except OSError:
                 pass
 
-    def _mux_audio(self, video_path, audio_source, output_path):
-        """Copy audio from original video onto the rendered output."""
+    def _overlay_sequence(self, input_path, frames_dir, fps, duration_in_frames, output_path):
+        """Composite PNG caption sequence onto original video with FFmpeg."""
+        pad_len = len(str(duration_in_frames - 1))
+        png_pattern = os.path.join(frames_dir, f"element-%0{pad_len}d.png")
         cmd = [
             FFMPEG, "-y",
-            "-i", video_path,
-            "-i", audio_source,
-            "-map", "0:v",
-            "-map", "1:a?",
-            "-c:v", "copy",
+            "-i", input_path,
+            "-framerate", str(round(fps)),
+            "-start_number", "0",
+            "-i", png_pattern,
+            "-filter_complex", "[0:v][1:v]overlay=format=auto",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
             "-c:a", "copy",
             "-shortest",
-            output_path
+            output_path,
         ]
+        print(f"[NSCaptionOverlay] Compositing {duration_in_frames} frames with FFmpeg...")
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(f"FFmpeg mux error:\n{result.stderr[-1000:]}")
+            raise RuntimeError(f"FFmpeg overlay error:\n{result.stderr[-1000:]}")
 
     def _process_file(self, input_path, output_path, settings):
         """Apply caption overlay to a video file on disk. Used by execute() and NSVideoConcatMulti."""
@@ -191,21 +187,13 @@ class NSCaptionOverlay:
             shutil.copy2(input_path, output_path)
             return
 
-        temp_files = []
+        frames_dir = None
         try:
             fps, width, height, duration = self._get_video_info(input_path)
             duration_in_frames = int(round(duration * fps))
 
             font_color = settings.get("fontColor", "")
             highlight_color = settings.get("highlightColor", "")
-
-            # Copy video into Remotion's public/ dir so staticFile() can serve it
-            public_dir = os.path.join(REMOTION_DIR, "public")
-            os.makedirs(public_dir, exist_ok=True)
-            video_filename = f"caption_source_{int(time.time())}.mp4"
-            public_video_path = os.path.join(public_dir, video_filename)
-            shutil.copy2(input_path, public_video_path)
-            temp_files.append(public_video_path)
 
             props = {
                 "words": words,
@@ -217,26 +205,22 @@ class NSCaptionOverlay:
                 "fontColor": font_color if isinstance(font_color, str) and font_color else None,
                 "highlightColor": highlight_color if isinstance(highlight_color, str) and highlight_color else None,
                 "emojis": settings.get("emojis", True),
-                "videoSrc": video_filename,
                 "width": width,
                 "height": height,
                 "fps": round(fps),
                 "durationInFrames": duration_in_frames,
             }
 
-            # Render video with captions baked in (H264, no alpha needed)
-            rendered_path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
-            temp_files.append(rendered_path)
+            # Render transparent caption overlay as PNG sequence (fast — no video in Chrome)
+            frames_dir = tempfile.mkdtemp(prefix="caption_frames_")
+            self._render_sequence(props, frames_dir)
 
-            self._render(props, rendered_path)
-            self._mux_audio(rendered_path, input_path, output_path)
+            # Composite PNGs onto original video with FFmpeg
+            self._overlay_sequence(input_path, frames_dir, fps, duration_in_frames, output_path)
 
         finally:
-            for f in temp_files:
-                try:
-                    os.unlink(f)
-                except OSError:
-                    pass
+            if frames_dir:
+                shutil.rmtree(frames_dir, ignore_errors=True)
 
     def _transcribe(self, video_path, language, model_size):
         """Run Whisper on a video file and return word list."""
