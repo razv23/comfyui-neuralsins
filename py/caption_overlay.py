@@ -123,7 +123,8 @@ class NSCaptionOverlay:
             n_cores = len(os.sched_getaffinity(0))
         except AttributeError:
             n_cores = os.cpu_count() or 1
-        return max(1, n_cores - 1)
+        # Cap at 6 to avoid Chrome memory thrashing on pods
+        return max(1, min(n_cores // 2, 6))
 
     def _render_sequence(self, props, frames_dir):
         """Render transparent caption overlay as a PNG image sequence."""
@@ -200,7 +201,11 @@ class NSCaptionOverlay:
         frames_dir = None
         try:
             fps, width, height, duration = self._get_video_info(input_path)
-            duration_in_frames = int(round(duration * fps))
+
+            # Render captions at 10fps — spring animations are FPS-aware so they
+            # look the same, just sampled at fewer points. Cuts render time ~3x.
+            render_fps = min(round(fps), 10)
+            render_frames = int(round(duration * render_fps))
 
             font_color = settings.get("fontColor", "")
             highlight_color = settings.get("highlightColor", "")
@@ -217,16 +222,17 @@ class NSCaptionOverlay:
                 "emojis": settings.get("emojis", True),
                 "width": width,
                 "height": height,
-                "fps": round(fps),
-                "durationInFrames": duration_in_frames,
+                "fps": render_fps,
+                "durationInFrames": render_frames,
             }
 
             # Render transparent caption overlay as PNG sequence (fast — no video in Chrome)
             frames_dir = tempfile.mkdtemp(prefix="caption_frames_")
             self._render_sequence(props, frames_dir)
 
-            # Composite PNGs onto original video with FFmpeg
-            self._overlay_sequence(input_path, frames_dir, fps, duration_in_frames, output_path)
+            # Composite PNGs onto original video (FFmpeg holds each caption frame
+            # for multiple video frames to bridge the FPS gap)
+            self._overlay_sequence(input_path, frames_dir, render_fps, render_frames, output_path)
 
         finally:
             if frames_dir:
