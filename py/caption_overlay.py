@@ -202,11 +202,7 @@ class NSCaptionOverlay:
         try:
             fps, width, height, duration = self._get_video_info(input_path)
 
-            # Render captions at half the video FPS — spring animations are FPS-aware
-            # so they look the same, just sampled at fewer points. Each caption frame
-            # is held for exactly 2 video frames, which looks smooth for text.
-            render_fps = max(12, round(fps / 2))
-            render_frames = int(round(duration * render_fps))
+            duration_in_frames = int(round(duration * fps))
 
             font_color = settings.get("fontColor", "")
             highlight_color = settings.get("highlightColor", "")
@@ -223,17 +219,16 @@ class NSCaptionOverlay:
                 "emojis": settings.get("emojis", True),
                 "width": width,
                 "height": height,
-                "fps": render_fps,
-                "durationInFrames": render_frames,
+                "fps": round(fps),
+                "durationInFrames": duration_in_frames,
             }
 
             # Render transparent caption overlay as PNG sequence (fast — no video in Chrome)
             frames_dir = tempfile.mkdtemp(prefix="caption_frames_")
             self._render_sequence(props, frames_dir)
 
-            # Composite PNGs onto original video (FFmpeg holds each caption frame
-            # for multiple video frames to bridge the FPS gap)
-            self._overlay_sequence(input_path, frames_dir, render_fps, render_frames, output_path)
+            # Composite PNGs onto original video with FFmpeg
+            self._overlay_sequence(input_path, frames_dir, fps, duration_in_frames, output_path)
 
         finally:
             if frames_dir:
